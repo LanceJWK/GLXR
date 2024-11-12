@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Newton's First Law Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #121212; /* Dark background */
+            color: white; /* Light text for dark mode */
+            font-family: 'Montserrat', sans-serif;
+        }
+        #container {
+            width: 100px; /* A bit longer container */
+            height: 45px;
+            border: 2px solid #fff;
+            position: relative;
+            background-color: #333; /* Dark container background */
+            overflow: hidden;
+        }
+        #ball {
+            width: 30px;
+            height: 30px;
+            background-color: orange;  /* Orange ball */
+            border-radius: 50%;
+            position: absolute;
+            left: 0;
+            bottom: 10px; /* Aligning the ball on the ground */
+        }
+        .vector {
+            position: absolute;
+            bottom: 25px; /* Align arrows with the ball */
+            height: 4px;
+            transform-origin: left; /* So we can adjust direction using scaleX */
+        }
+        #forceVector {
+            background-color: red; /* Force arrow in red */
+            z-index: 1;
+        }
+        #velocityVector {
+            background-color: blue; /* Velocity arrow in blue */
+            z-index: 2; /* Place velocity on top of force */
+            margin-top: -6px; /* Slight offset above force vector */
+        }
+        #frictionVector {
+            background-color: green; /* Friction arrow in green */
+            z-index: 0; /* Place friction below others */
+            margin-top: -12px; /* Offset further above for visibility */
+        }
+        #buttonContainer {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #444; /* Dark button background */
+            color: white; /* White text */
+            border: none;
+            border-radius: 5px;
+            font-family: 'Montserrat', sans-serif;
+        }
+        button:hover {
+            background-color: #666; /* Hover effect for button */
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <div id="ball"></div>
+    <div id="forceVector" class="vector"></div>
+    <div id="velocityVector" class="vector"></div>
+    <div id="frictionVector" class="vector"></div>
+</div>
+<div id="buttonContainer">
+    <button onclick="pushBall()">Push the Ball</button>
+</div>
+
+<script>
+    const ball = document.getElementById('ball');
+    const container = document.getElementById('container');
+    const velocityVector = document.getElementById('velocityVector');
+    const forceVector = document.getElementById('forceVector');
+    const frictionVector = document.getElementById('frictionVector');
+    let velocity = 0;
+    const friction = 0.02;  // Friction coefficient
+    const initialAcceleration = 0.5;  // Initial push acceleration
+    const maxVectorLength = 100; // Max length for vector visuals
+
+    let forceActive = false;  // Indicates if the push force is active
+    let forceDecay = 0;  // Track the force decay over time
+    let initialForceLength = 0;  // Length of the force vector when initially pushed
+
+    function pushBall() {
+        // Only apply a new push if the ball isn't already in motion
+        if (velocity === 0) {
+            initialForceLength = initialAcceleration * maxVectorLength;
+            forceActive = true;
+            forceDecay = 1;  // Reset force decay when push starts
+        }
+        velocity += (velocity >= 0 ? initialAcceleration : -initialAcceleration);
+        updateVectors();
+        moveBall();
+    }
+
+    function updateVectors() {
+        // Center each vector arrow horizontally on the ball
+        const ballCenterX = ball.offsetLeft + ball.offsetWidth / 2;
+
+        // Force vector (red): Will gradually fade out once push is over
+        const currentForceLength = forceActive ? initialForceLength * forceDecay : 0;
+        forceVector.style.width = currentForceLength + 'px';
+        forceVector.style.left = ballCenterX + 'px';
+        forceVector.style.transform = `scaleX(${velocity >= 0 ? 1 : -1})`;
+
+        // Velocity vector (blue): Based on the current velocity
+        velocityVector.style.width = (Math.abs(velocity) * maxVectorLength) + 'px';
+        velocityVector.style.left = ballCenterX + 'px';
+        velocityVector.style.transform = `scaleX(${velocity >= 0 ? 1 : -1})`;
+
+        // Friction vector (green): Opposes the direction of motion
+        frictionVector.style.width = (Math.max(10, Math.abs(velocity * friction * maxVectorLength))) + 'px'; // Minimum width for visibility
+        frictionVector.style.left = ballCenterX + 'px';
+        frictionVector.style.transform = `scaleX(${velocity >= 0 ? -1 : 1})`;
+    }
+
+    function moveBall() {
+        // Update the position based on the velocity
+        let leftPosition = parseFloat(ball.style.left || 0);
+        leftPosition += velocity;
+        
+        // Apply friction to gradually reduce velocity
+        velocity *= (1 - friction);
+
+        // Check for edge collision and reverse direction
+        if (leftPosition + ball.offsetWidth >= container.offsetWidth || leftPosition <= 0) {
+            velocity = -velocity;  // Reverse direction on collision
+            leftPosition = Math.max(0, Math.min(leftPosition, container.offsetWidth - ball.offsetWidth));  // Keep ball within bounds
+        }
+
+        // Update position and vectors
+        ball.style.left = leftPosition + 'px';
+        updateVectors();
+
+        // Continue moving if velocity is above a threshold
+        if (Math.abs(velocity) > 0.01) {
+            requestAnimationFrame(moveBall);
+        } else {
+            // Hide vectors when the ball stops moving
+            forceVector.style.width = '0px';
+            velocityVector.style.width = '0px';
+            frictionVector.style.width = '0px';
+        }
+
+        // Gradually reduce the force vector once the push is no longer active
+        if (forceActive && forceDecay > 0) {
+            forceDecay -= 0.01; // Diminish the force over time
+            if (forceDecay <= 0) {
+                forceActive = false;
+                forceDecay = 0;
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
